@@ -1,3 +1,31 @@
+
+
+// // ==================== 🆕 GET USERS (With Role Filter) ====================
+
+// /**
+//  * Get all users (optional role filter)
+//  * GET /api/v1/admin/users
+//  * Access: super_admin, dispatcher
+//  */
+// exports.getUsers = catchAsync(async (req, res, next) => {
+//     const { role } = req.query;
+//     let query = 'SELECT id, national_id, full_name, phone, email, role, is_verified, wallet_balance, created_at FROM users';
+//     const params = [];
+
+//     if (role) {
+//         query += ' WHERE role = ?';
+//         params.push(role);
+//     }
+
+//     query += ' ORDER BY created_at DESC';
+
+//     const [rows] = await pool.execute(query, params);
+//     res.status(200).json({ success: true, data: rows });
+// });
+
+
+
+
 const { pool } = require('../config/db');
 const { logAction } = require('../services/auditService');
 const catchAsync = require('../utils/catchAsync');
@@ -160,12 +188,35 @@ exports.getDashboardStats = catchAsync(async (req, res, next) => {
     res.status(200).json({ success: true, data: stats[0] });
 });
 
-// ==================== ADMIN USER MANAGEMENT (NEW) ====================
+// ==================== ADMIN USER MANAGEMENT ====================
+
+/**
+ * Get all users (optional role filter)
+ * GET /api/v1/admin/users
+ * Access: super_admin, dispatcher
+ */
+exports.getUsers = catchAsync(async (req, res, next) => {
+    const { role } = req.query;
+    let query = 'SELECT id, national_id, full_name, phone, email, role, is_verified, wallet_balance, created_at FROM users';
+    const params = [];
+
+    if (role) {
+        query += ' WHERE role = ?';
+        params.push(role);
+    }
+
+    query += ' ORDER BY created_at DESC';
+
+    const [rows] = await pool.execute(query, params);
+    res.status(200).json({ success: true, data: rows });
+});
 
 /**
  * Admin creates a user with any role.
- * Only accessible by super_admin or dispatcher.
  * POST /api/v1/admin/users
+ * Access: super_admin, dispatcher
+ * 
+ * 🛡️ ENFORCES: Only ONE super_admin allowed in the entire system.
  */
 exports.createUserByAdmin = catchAsync(async (req, res, next) => {
     const { national_id, full_name, phone, email, password, role } = req.body;
@@ -178,6 +229,19 @@ exports.createUserByAdmin = catchAsync(async (req, res, next) => {
     // Validate role
     if (!Object.values(ROLES).includes(role)) {
         return next(new AppError(`Invalid role. Allowed: ${Object.values(ROLES).join(', ')}`, 400));
+    }
+
+    // ================================================================
+    // 🛡️ NEW CHECK: Only ONE super_admin allowed in the entire system
+    // ================================================================
+    if (role === 'super_admin') {
+        const [existingAdmin] = await pool.execute(
+            'SELECT id FROM users WHERE role = ?',
+            ['super_admin']
+        );
+        if (existingAdmin.length > 0) {
+            return next(new AppError('A super admin already exists. Only one super admin is allowed.', 409));
+        }
     }
 
     // Validate phone, national_id, email
@@ -203,7 +267,7 @@ exports.createUserByAdmin = catchAsync(async (req, res, next) => {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    // Insert user (explicit UUID)
+    // Insert user with explicit UUID
     await pool.execute(`
         INSERT INTO users (id, national_id, full_name, phone, email, password_hash, role, is_verified, wallet_balance)
         VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?)
@@ -230,5 +294,3 @@ exports.createUserByAdmin = catchAsync(async (req, res, next) => {
         data: { user }
     });
 });
-
-
