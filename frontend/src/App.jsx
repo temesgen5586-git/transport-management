@@ -1,122 +1,104 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import React from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
+import { AuthProvider } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
+import PrivateRoute from './routes/PrivateRoute';
+import Layout from './components/common/Layout';
+
+// Auth pages
+import Login from './pages/auth/Login';
+import Register from './pages/auth/Register';
+import ForgotPassword from './pages/auth/ForgotPassword';
+import ResetPassword from './pages/auth/ResetPassword';
+
+// Dashboards
+import AdminDashboard from './pages/dashboard/AdminDashboard';
+import DriverDashboard from './pages/dashboard/DriverDashboard';
+import CustomerDashboard from './pages/dashboard/CustomerDashboard';
+
+// Admin
+import Users from './pages/admin/Users';
+import Cities from './pages/admin/Cities';
+import Routes from './pages/admin/Routes';
+import Vehicles from './pages/admin/Vehicles';
+import VehicleTypes from './pages/admin/VehicleTypes';
+import Trips from './pages/admin/Trips';
+import Stats from './pages/admin/Stats';
+import Penalties from './pages/admin/Penalties';
+
+// Bookings
+import BookTrip from './pages/bookings/BookTrip';
+import MyBookings from './pages/bookings/MyBookings';
+import BookingDetails from './pages/bookings/BookingDetails';
+import Payment from './pages/payment/Payment';
+
+// Wallet
+import Wallet from './pages/wallet/Wallet';
+
+// Driver
+import Manifest from './pages/driver/Manifest';
+import Settlements from './pages/driver/Settlements';
+import DriverPenalties from './pages/driver/DriverPenalties';
+
+// Freight
+import CreateOrder from './pages/freight/CreateOrder';
+import Orders from './pages/freight/Orders';
+import CustomsDocuments from './pages/freight/CustomsDocuments';
+
+// Emergency & Audit
+import EmergencyLogs from './pages/emergency/EmergencyLogs';
+import AuditLogs from './pages/audit/AuditLogs';
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+    <BrowserRouter>
+      <ThemeProvider>
+        <AuthProvider>
+          <Toaster position="top-right" />
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
+              <Route index element={<CustomerDashboard />} />
+              <Route path="admin">
+                <Route index element={<AdminDashboard />} />
+                <Route path="users" element={<Users />} />
+                <Route path="cities" element={<Cities />} />
+                <Route path="routes" element={<Routes />} />
+                <Route path="vehicles" element={<Vehicles />} />
+                <Route path="vehicle-types" element={<VehicleTypes />} />
+                <Route path="trips" element={<Trips />} />
+                <Route path="stats" element={<Stats />} />
+                <Route path="penalties" element={<Penalties />} />
+              </Route>
+              <Route path="driver">
+                <Route index element={<DriverDashboard />} />
+                <Route path="manifest" element={<Manifest />} />
+                <Route path="settlements" element={<Settlements />} />
+                <Route path="penalties" element={<DriverPenalties />} />
+              </Route>
+              <Route path="book-trip" element={<BookTrip />} />
+              <Route path="my-bookings" element={<MyBookings />} />
+              <Route path="bookings/:id" element={<BookingDetails />} />
+              <Route path="payment" element={<Payment />} />
+              <Route path="wallet" element={<Wallet />} />
+              <Route path="freight">
+                <Route path="create" element={<CreateOrder />} />
+                <Route path="orders" element={<Orders />} />
+                <Route path="customs" element={<CustomsDocuments />} />
+              </Route>
+              <Route path="emergency/logs" element={<EmergencyLogs />} />
+              <Route path="audit/logs" element={<AuditLogs />} />
+            </Route>
+            <Route path="/unauthorized" element={<div className="p-8 text-center text-red-600">Unauthorized Access</div>} />
+          </Routes>
+        </AuthProvider>
+      </ThemeProvider>
+    </BrowserRouter>
+  );
 }
 
-export default App
+export default App;
