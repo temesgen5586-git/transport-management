@@ -2,11 +2,24 @@ const { pool } = require('../config/db');
 const { logAction } = require('../services/auditService');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
-const { TRIP_STATUSES } = require('../utils/constants');
+const { isWithinOperatingHours } = require('../utils/helpers');
+
+/**
+ * Helper: Convert ISO string to MySQL datetime format.
+ * Input: '2026-06-25T08:00:00Z' → Output: '2026-06-25 08:00:00'
+ */
+const toMySQLDateTime = (isoString) => {
+    const date = new Date(isoString);
+    if (isNaN(date.getTime())) {
+        throw new Error('Invalid date format');
+    }
+    return date.toISOString().slice(0, 19).replace('T', ' ');
+};
 
 /**
  * Schedule a new trip (Admin/Dispatcher)
  * POST /api/v1/trips
+ * ✅ Time window validation (12:00 AM – 2:00 PM)
  */
 exports.scheduleTrip = catchAsync(async (req, res, next) => {
     const { route_id, vehicle_id, driver_id, scheduled_departure } = req.body;
@@ -15,7 +28,19 @@ exports.scheduleTrip = catchAsync(async (req, res, next) => {
         return next(new AppError('Missing required fields: route_id, vehicle_id, driver_id, scheduled_departure', 400));
     }
 
-    // Check if vehicle is available at that time (MySQL doesn't have exclusion constraint)
+    // --- Time window validation (Ethiopian transport rule) ---
+    if (!isWithinOperatingHours(scheduled_departure)) {
+        return next(new AppError('Trips can only be scheduled between 12:00 AM and 2:00 PM (Addis Ababa time).', 400));
+    }
+
+    let departureDate;
+    try {
+        departureDate = toMySQLDateTime(scheduled_departure);
+    } catch (err) {
+        return next(new AppError('Invalid date format. Use ISO 8601 (e.g., 2026-06-25T10:00:00Z for 1 PM)', 400));
+    }
+
+    // Check vehicle availability
     const [conflict] = await pool.execute(`
         SELECT id FROM trips
         WHERE vehicle_id = ?
@@ -24,7 +49,7 @@ exports.scheduleTrip = catchAsync(async (req, res, next) => {
               (scheduled_departure <= ? AND estimated_arrival > ?) OR
               (scheduled_departure < ? AND estimated_arrival >= ?)
           )
-    `, [vehicle_id, scheduled_departure, scheduled_departure, scheduled_departure, scheduled_departure]);
+    `, [vehicle_id, departureDate, departureDate, departureDate, departureDate]);
 
     if (conflict.length > 0) {
         return next(new AppError('Vehicle is already scheduled for a trip overlapping with this time.', 409));
@@ -41,17 +66,18 @@ exports.scheduleTrip = catchAsync(async (req, res, next) => {
     const durationMins = routeRows[0].base_duration_mins;
 
     // Calculate estimated arrival
-    const estimatedArrival = new Date(new Date(scheduled_departure).getTime() + durationMins * 60000);
+    const departure = new Date(departureDate);
+    const estimatedArrival = new Date(departure.getTime() + durationMins * 60000);
+    const arrivalMySQL = estimatedArrival.toISOString().slice(0, 19).replace('T', ' ');
 
     // Insert trip
     const [result] = await pool.execute(`
         INSERT INTO trips (route_id, vehicle_id, driver_id, scheduled_departure, estimated_arrival, status)
         VALUES (?, ?, ?, ?, ?, 'scheduled')
-    `, [route_id, vehicle_id, driver_id, scheduled_departure, estimatedArrival]);
+    `, [route_id, vehicle_id, driver_id, departureDate, arrivalMySQL]);
 
     const tripId = result.insertId;
 
-    // Audit log
     await logAction(req.user.id, 'TRIP_SCHEDULED', 'TRIP', tripId, null, { route_id, vehicle_id, driver_id, scheduled_departure }, req);
 
     // Get full trip details
@@ -77,7 +103,6 @@ exports.scheduleTrip = catchAsync(async (req, res, next) => {
 /**
  * List trips with filters
  * GET /api/v1/trips
- * Query: ?status=scheduled&date=2026-06-25&route_id=1
  */
 exports.getTrips = catchAsync(async (req, res, next) => {
     const { status, date, route_id, vehicle_id, driver_id } = req.query;
@@ -124,7 +149,7 @@ exports.getTrips = catchAsync(async (req, res, next) => {
 });
 
 /**
- * Get live trips (real-time GPS for active trips)
+ * Get live trips (real-time GPS)
  * GET /api/v1/trips/live
  */
 exports.getLiveTrips = catchAsync(async (req, res, next) => {
@@ -138,7 +163,7 @@ exports.getLiveTrips = catchAsync(async (req, res, next) => {
 });
 
 /**
- * Driver: Depart for a trip (check-in with GPS)
+ * Driver depart (check-in with GPS)
  * POST /api/v1/trips/:id/depart
  */
 exports.driverDepart = catchAsync(async (req, res, next) => {
@@ -154,7 +179,6 @@ exports.driverDepart = catchAsync(async (req, res, next) => {
     try {
         await connection.beginTransaction();
 
-        // Check trip
         const [tripRows] = await connection.execute(
             'SELECT scheduled_departure, status FROM trips WHERE id = ? AND driver_id = ?',
             [trip_id, driver_id]
@@ -172,8 +196,7 @@ exports.driverDepart = catchAsync(async (req, res, next) => {
         const dep = new Date(trip.scheduled_departure);
         const diffMinutes = (now - dep) / 60000;
         if (diffMinutes > 15) {
-            // Auto-cancel
-            await connection.execute('UPDATE trips SET status = ? WHERE id = ?', ['cancelled', trip_id]);
+            await connection.execute('UPDATE trips SET status = "cancelled" WHERE id = ?', [trip_id]);
             await connection.execute(`
                 INSERT INTO penalties (driver_id, trip_id, penalty_type, amount, description)
                 VALUES (?, ?, 'delay', 10.00, 'Auto-cancelled for 15-min delay')
@@ -181,11 +204,10 @@ exports.driverDepart = catchAsync(async (req, res, next) => {
             await connection.commit();
             return res.status(409).json({
                 success: false,
-                error: 'Departure delayed > 15 mins. Order revoked and penalty applied.'
+                error: 'Departure delayed > 15 mins. Order revoked. Penalty applied.'
             });
         }
 
-        // Update trip
         await connection.execute(`
             UPDATE trips
             SET status = 'departed', actual_departure = NOW(), current_latitude = ?, current_longitude = ?
@@ -195,7 +217,6 @@ exports.driverDepart = catchAsync(async (req, res, next) => {
         await logAction(driver_id, 'TRIP_DEPARTED', 'TRIP', trip_id, null, { latitude, longitude }, req);
 
         await connection.commit();
-
         res.status(200).json({ success: true, message: 'Trip departed successfully' });
 
     } catch (err) {
@@ -207,7 +228,7 @@ exports.driverDepart = catchAsync(async (req, res, next) => {
 });
 
 /**
- * Driver: Complete trip (trigger settlement)
+ * Complete trip
  * POST /api/v1/trips/:id/complete
  */
 exports.completeTrip = catchAsync(async (req, res, next) => {
@@ -218,7 +239,6 @@ exports.completeTrip = catchAsync(async (req, res, next) => {
     try {
         await connection.beginTransaction();
 
-        // Check trip
         const [tripRows] = await connection.execute(
             'SELECT id FROM trips WHERE id = ? AND driver_id = ? AND status = "departed"',
             [trip_id, driver_id]
@@ -227,13 +247,12 @@ exports.completeTrip = catchAsync(async (req, res, next) => {
             return next(new AppError('Trip not found or not departed', 404));
         }
 
-        // Update status
         await connection.execute(
             'UPDATE trips SET status = "completed", actual_arrival = NOW() WHERE id = ?',
             [trip_id]
         );
 
-        // Calculate earnings from bookings
+        // Calculate earnings
         const [earnings] = await connection.execute(
             'SELECT SUM(price) AS total FROM bookings WHERE trip_id = ? AND booking_status != "cancelled"',
             [trip_id]
@@ -242,13 +261,11 @@ exports.completeTrip = catchAsync(async (req, res, next) => {
         const net = gross * 0.7;
         const fee = gross * 0.3;
 
-        // Insert settlement
         await connection.execute(`
             INSERT INTO driver_settlements (driver_id, trip_id, gross_earning, institution_fee, net_earning, final_payout)
             VALUES (?, ?, ?, ?, ?, ?)
         `, [driver_id, trip_id, gross, fee, net, net]);
 
-        // Credit driver's wallet
         await connection.execute(
             'UPDATE users SET wallet_balance = wallet_balance + ? WHERE id = ?',
             [net, driver_id]
@@ -261,7 +278,6 @@ exports.completeTrip = catchAsync(async (req, res, next) => {
         await logAction(driver_id, 'TRIP_COMPLETED', 'TRIP', trip_id, null, { gross, net }, req);
 
         await connection.commit();
-
         res.status(200).json({
             success: true,
             message: 'Trip completed.',
