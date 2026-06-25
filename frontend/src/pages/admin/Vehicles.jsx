@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { getVehicles, registerVehicle, updateVehicle, deleteVehicle, getVehicleTypes, updateVehicleCapacity } from '../../api/admin';
 import toast from 'react-hot-toast';
+import GlassCard from '../../components/common/GlassCard';
+import GradientButton from '../../components/common/GradientButton';
 import { PlusIcon, PencilIcon, TrashIcon, AdjustmentsHorizontalIcon } from '@heroicons/react/24/outline';
 
 const Vehicles = () => {
@@ -19,9 +21,7 @@ const Vehicles = () => {
     max_capacity: ''
   });
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  useEffect(() => { fetchData(); }, []);
 
   const fetchData = async () => {
     try {
@@ -31,9 +31,7 @@ const Vehicles = () => {
       setVehicleTypes(typesRes.data.data);
     } catch (error) {
       toast.error('Failed to fetch data');
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   const handleSubmit = async (e) => {
@@ -116,98 +114,104 @@ const Vehicles = () => {
     return { label: `${max} Available`, color: 'badge-success', bg: 'bg-emerald-500' };
   };
 
+  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary-500 border-t-transparent"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary-500 border-t-transparent" />
       </div>
     );
   }
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
+    <div className="space-y-6 animate-fadeIn">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Vehicles Management</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400">Manage fleet vehicles with capacity tracking</p>
         </div>
-        <button
-          onClick={() => { resetForm(); setShowModal(true); }}
-          className="btn-primary flex items-center gap-2"
-        >
-          <PlusIcon className="w-5 h-5" />
+        <GradientButton variant="primary" size="sm" icon={PlusIcon} onClick={() => { resetForm(); setShowModal(true); }}>
           Register Vehicle
-        </button>
+        </GradientButton>
       </div>
 
+      {/* Vehicles Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {vehicles.map((vehicle) => {
-          const status = getCapacityStatus(vehicle);
-          const isFull = vehicle.current_occupancy >= vehicle.max_capacity;
-          return (
-            <div key={vehicle.id} className={`card p-4 hover:shadow-lg transition-all ${isFull ? 'border-red-300 dark:border-red-800' : ''}`}>
-              <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100">{vehicle.plate_number}</h3>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">{vehicle.vehicle_type}</p>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">{vehicle.model || 'N/A'} • {vehicle.year_made || 'N/A'}</p>
+        {vehicles.length === 0 ? (
+          <GlassCard className="p-8 text-center text-slate-500 dark:text-slate-400 col-span-full">
+            No vehicles registered. Click "Register Vehicle" to add one.
+          </GlassCard>
+        ) : (
+          vehicles.map((vehicle) => {
+            const status = getCapacityStatus(vehicle);
+            const isFull = vehicle.current_occupancy >= vehicle.max_capacity;
+            return (
+              <GlassCard key={vehicle.id} className={`p-4 ${isFull ? 'border-red-300 dark:border-red-800' : ''}`} interactive hoverEffect="lift">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100">{vehicle.plate_number}</h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">{vehicle.vehicle_type}</p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">{vehicle.model || 'N/A'} • {vehicle.year_made || 'N/A'}</p>
+                  </div>
+                  <span className={`badge ${status.color}`}>{status.label}</span>
                 </div>
-                <span className={`badge ${status.color}`}>{status.label}</span>
-              </div>
 
-              <div className="mt-3">
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="text-slate-600 dark:text-slate-300">Capacity</span>
-                  <span className="font-medium text-slate-800 dark:text-slate-100">{vehicle.max_capacity || 0} seats</span>
+                <div className="mt-3">
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="text-slate-600 dark:text-slate-300">Capacity</span>
+                    <span className="font-medium text-slate-800 dark:text-slate-100">{vehicle.max_capacity || 0} seats</span>
+                  </div>
+                  <div className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full transition-all duration-500 ${status.bg}`}
+                      style={{ width: `${Math.min(((vehicle.current_occupancy || 0) / (vehicle.max_capacity || 1)) * 100, 100)}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between text-xs text-slate-400 mt-1">
+                    <span>Occupied: {vehicle.current_occupancy || 0}</span>
+                    <span>Available: {Math.max(0, (vehicle.max_capacity || 0) - (vehicle.current_occupancy || 0))}</span>
+                  </div>
                 </div>
-                <div className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full transition-all duration-500 ${status.bg}`}
-                    style={{ width: `${Math.min(((vehicle.current_occupancy || 0) / (vehicle.max_capacity || 1)) * 100, 100)}%` }}
-                  />
-                </div>
-                <div className="flex justify-between text-xs text-slate-400 mt-1">
-                  <span>Occupied: {vehicle.current_occupancy || 0}</span>
-                  <span>Available: {Math.max(0, (vehicle.max_capacity || 0) - (vehicle.current_occupancy || 0))}</span>
-                </div>
-              </div>
 
-              <div className="flex gap-2 mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
-                <button
-                  onClick={() => { setShowCapacityModal(vehicle.id); setCapacityValue(vehicle.max_capacity || ''); }}
-                  className="text-sm text-blue-600 hover:underline dark:text-blue-400 flex items-center gap-1"
-                >
-                  <AdjustmentsHorizontalIcon className="w-4 h-4" /> Adjust Capacity
-                </button>
-                <button
-                  onClick={() => handleEdit(vehicle)}
-                  className="text-sm text-primary-600 hover:underline dark:text-primary-400 flex items-center gap-1"
-                >
-                  <PencilIcon className="w-4 h-4" /> Edit
-                </button>
-                <button
-                  onClick={() => handleDelete(vehicle.id)}
-                  className="text-sm text-red-600 hover:underline dark:text-red-400 flex items-center gap-1"
-                >
-                  <TrashIcon className="w-4 h-4" /> Delete
-                </button>
-              </div>
-            </div>
-          );
-        })}
+                <div className="flex gap-2 mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+                  <button
+                    onClick={() => { setShowCapacityModal(vehicle.id); setCapacityValue(vehicle.max_capacity || ''); }}
+                    className="text-sm text-blue-600 hover:underline dark:text-blue-400 flex items-center gap-1"
+                  >
+                    <AdjustmentsHorizontalIcon className="w-4 h-4" /> Adjust
+                  </button>
+                  <button
+                    onClick={() => handleEdit(vehicle)}
+                    className="text-sm text-primary-600 hover:underline dark:text-primary-400 flex items-center gap-1"
+                  >
+                    <PencilIcon className="w-4 h-4" /> Edit
+                  </button>
+                  <button
+                    onClick={() => handleDelete(vehicle.id)}
+                    className="text-sm text-red-600 hover:underline dark:text-red-400 flex items-center gap-1"
+                  >
+                    <TrashIcon className="w-4 h-4" /> Delete
+                  </button>
+                </div>
+              </GlassCard>
+            );
+          })
+        )}
       </div>
 
       {/* Create/Edit Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-2xl w-full shadow-2xl">
+          <GlassCard className="max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">
                 {editingVehicle ? 'Edit Vehicle' : 'Register New Vehicle'}
               </h2>
               <button
                 onClick={() => { setShowModal(false); resetForm(); }}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-2xl"
               >
                 ✕
               </button>
@@ -220,8 +224,9 @@ const Vehicles = () => {
                     Plate Number *
                   </label>
                   <input
+                    name="plate_number"
                     value={formData.plate_number}
-                    onChange={(e) => setFormData({...formData, plate_number: e.target.value})}
+                    onChange={handleChange}
                     className="input-field"
                     placeholder="AA-12345"
                     required
@@ -232,11 +237,12 @@ const Vehicles = () => {
                     Vehicle Type *
                   </label>
                   <select
+                    name="vehicle_type_id"
                     value={formData.vehicle_type_id}
                     onChange={(e) => {
                       const typeId = e.target.value;
                       const defaultCap = getDefaultCapacity(typeId);
-                      setFormData({...formData, vehicle_type_id: typeId, max_capacity: defaultCap || ''});
+                      setFormData({ ...formData, vehicle_type_id: typeId, max_capacity: defaultCap || '' });
                     }}
                     className="input-field"
                     required
@@ -254,8 +260,9 @@ const Vehicles = () => {
                     Model
                   </label>
                   <input
+                    name="model"
                     value={formData.model}
-                    onChange={(e) => setFormData({...formData, model: e.target.value})}
+                    onChange={handleChange}
                     className="input-field"
                     placeholder="Isuzu Bus"
                   />
@@ -266,8 +273,9 @@ const Vehicles = () => {
                   </label>
                   <input
                     type="number"
+                    name="year_made"
                     value={formData.year_made}
-                    onChange={(e) => setFormData({...formData, year_made: e.target.value})}
+                    onChange={handleChange}
                     className="input-field"
                     placeholder="2022"
                   />
@@ -278,8 +286,9 @@ const Vehicles = () => {
                   </label>
                   <input
                     type="number"
+                    name="max_capacity"
                     value={formData.max_capacity}
-                    onChange={(e) => setFormData({...formData, max_capacity: e.target.value})}
+                    onChange={handleChange}
                     className="input-field"
                     placeholder="Leave empty to use vehicle type default"
                   />
@@ -292,27 +301,28 @@ const Vehicles = () => {
               </div>
 
               <div className="flex gap-3 mt-6">
-                <button type="submit" className="btn-primary flex-1">
+                <GradientButton type="submit" variant="primary" className="flex-1">
                   {editingVehicle ? 'Update Vehicle' : 'Register Vehicle'}
-                </button>
-                <button
+                </GradientButton>
+                <GradientButton
                   type="button"
+                  variant="secondary"
                   onClick={() => { setShowModal(false); resetForm(); }}
-                  className="btn-secondary flex-1"
+                  className="flex-1"
                 >
                   Cancel
-                </button>
+                </GradientButton>
               </div>
             </form>
-          </div>
+          </GlassCard>
         </div>
       )}
 
       {/* Capacity Adjustment Modal */}
       {showCapacityModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl">
-            <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-4">Adjust Vehicle Capacity</h2>
+          <GlassCard className="max-w-md w-full p-6">
+            <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-4">Adjust Vehicle Capacity</h2>
             <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
               Update the maximum number of passengers this vehicle can carry.
             </p>
@@ -329,20 +339,14 @@ const Vehicles = () => {
               />
             </div>
             <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => handleCapacityUpdate(showCapacityModal)}
-                className="btn-primary flex-1"
-              >
+              <GradientButton variant="primary" className="flex-1" onClick={() => handleCapacityUpdate(showCapacityModal)}>
                 Update
-              </button>
-              <button
-                onClick={() => { setShowCapacityModal(null); setCapacityValue(''); }}
-                className="btn-secondary flex-1"
-              >
+              </GradientButton>
+              <GradientButton variant="secondary" className="flex-1" onClick={() => { setShowCapacityModal(null); setCapacityValue(''); }}>
                 Cancel
-              </button>
+              </GradientButton>
             </div>
-          </div>
+          </GlassCard>
         </div>
       )}
     </div>

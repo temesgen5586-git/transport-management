@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { getVehicleTypes, createVehicleType, updateVehicleType, deleteVehicleType } from '../../api/admin';
 import toast from 'react-hot-toast';
+import GlassCard from '../../components/common/GlassCard';
+import GradientButton from '../../components/common/GradientButton';
 import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
 
 const VehicleTypes = () => {
@@ -27,9 +29,7 @@ const VehicleTypes = () => {
       setTypes(res.data.data);
     } catch (error) {
       toast.error('Failed to fetch vehicle types');
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   const handleSubmit = async (e) => {
@@ -84,33 +84,33 @@ const VehicleTypes = () => {
     }
   };
 
+  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary-500 border-t-transparent"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary-500 border-t-transparent" />
       </div>
     );
   }
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
+    <div className="space-y-6 animate-fadeIn">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Vehicle Types</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400">Define vehicle categories and capacity defaults</p>
         </div>
-        <button
-          onClick={() => { resetForm(); setShowModal(true); }}
-          className="btn-primary flex items-center gap-2"
-        >
-          <PlusIcon className="w-5 h-5" />
+        <GradientButton variant="primary" size="sm" icon={PlusIcon} onClick={() => { resetForm(); setShowModal(true); }}>
           Add Type
-        </button>
+        </GradientButton>
       </div>
 
-      <div className="card overflow-x-auto">
+      {/* Vehicle Types Table */}
+      <GlassCard className="overflow-x-auto">
         <table className="w-full">
-          <thead className="bg-slate-50 dark:bg-slate-700 border-b border-slate-200 dark:border-slate-700">
+          <thead className="bg-slate-50 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Name</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Category</th>
@@ -121,46 +121,54 @@ const VehicleTypes = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-            {types.map((t) => (
-              <tr key={t.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                <td className="px-6 py-4 font-medium text-slate-800 dark:text-slate-100">{t.name}</td>
-                <td className="px-6 py-4">
-                  <span className="badge badge-info">{t.category}</span>
-                </td>
-                <td className="px-6 py-4 text-slate-600 dark:text-slate-300">{t.max_capacity}</td>
-                <td className="px-6 py-4 text-slate-600 dark:text-slate-300">{t.base_fare_multiplier}x</td>
-                <td className="px-6 py-4 text-slate-600 dark:text-slate-300">{t.freight_capacity_kg || '-'}</td>
-                <td className="px-6 py-4">
-                  <button
-                    onClick={() => handleEdit(t)}
-                    className="text-primary-600 hover:text-primary-800 dark:text-primary-400 dark:hover:text-primary-300 mr-3"
-                  >
-                    <PencilIcon className="w-5 h-5" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(t.id)}
-                    className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
-                  >
-                    <TrashIcon className="w-5 h-5" />
-                  </button>
+            {types.length === 0 ? (
+              <tr>
+                <td colSpan="6" className="px-6 py-8 text-center text-slate-500 dark:text-slate-400">
+                  No vehicle types found
                 </td>
               </tr>
-            ))}
+            ) : (
+              types.map((t) => (
+                <tr key={t.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+                  <td className="px-6 py-4 font-medium text-slate-800 dark:text-slate-100">{t.name}</td>
+                  <td className="px-6 py-4">
+                    <span className="badge badge-info">{t.category}</span>
+                  </td>
+                  <td className="px-6 py-4 text-slate-600 dark:text-slate-300">{t.max_capacity}</td>
+                  <td className="px-6 py-4 text-slate-600 dark:text-slate-300">{t.base_fare_multiplier}x</td>
+                  <td className="px-6 py-4 text-slate-600 dark:text-slate-300">{t.freight_capacity_kg || '-'}</td>
+                  <td className="px-6 py-4">
+                    <button
+                      onClick={() => handleEdit(t)}
+                      className="text-primary-600 hover:text-primary-800 dark:text-primary-400 dark:hover:text-primary-300 mr-3"
+                    >
+                      <PencilIcon className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(t.id)}
+                      className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                    >
+                      <TrashIcon className="w-5 h-5" />
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
-      </div>
+      </GlassCard>
 
       {/* Create/Edit Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-2xl w-full shadow-2xl">
+          <GlassCard className="max-w-2xl w-full p-6">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">
                 {editingType ? 'Edit Vehicle Type' : 'Create Vehicle Type'}
               </h2>
               <button
                 onClick={() => { setShowModal(false); resetForm(); }}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-2xl"
               >
                 ✕
               </button>
@@ -173,8 +181,9 @@ const VehicleTypes = () => {
                     Type Name *
                   </label>
                   <input
+                    name="name"
                     value={formData.name}
-                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                    onChange={handleChange}
                     className="input-field"
                     placeholder="Economy Bus"
                     required
@@ -185,8 +194,9 @@ const VehicleTypes = () => {
                     Category *
                   </label>
                   <select
+                    name="category"
                     value={formData.category}
-                    onChange={(e) => setFormData({...formData, category: e.target.value})}
+                    onChange={handleChange}
                     className="input-field"
                     required
                   >
@@ -199,8 +209,9 @@ const VehicleTypes = () => {
                   </label>
                   <input
                     type="number"
+                    name="max_capacity"
                     value={formData.max_capacity}
-                    onChange={(e) => setFormData({...formData, max_capacity: e.target.value})}
+                    onChange={handleChange}
                     className="input-field"
                     placeholder="50"
                     required
@@ -213,8 +224,9 @@ const VehicleTypes = () => {
                   <input
                     type="number"
                     step="0.01"
+                    name="base_fare_multiplier"
                     value={formData.base_fare_multiplier}
-                    onChange={(e) => setFormData({...formData, base_fare_multiplier: e.target.value})}
+                    onChange={handleChange}
                     className="input-field"
                     placeholder="1.0"
                     required
@@ -227,8 +239,9 @@ const VehicleTypes = () => {
                   <input
                     type="number"
                     step="0.01"
+                    name="freight_capacity_kg"
                     value={formData.freight_capacity_kg}
-                    onChange={(e) => setFormData({...formData, freight_capacity_kg: e.target.value})}
+                    onChange={handleChange}
                     className="input-field"
                     placeholder="5000"
                   />
@@ -236,19 +249,20 @@ const VehicleTypes = () => {
               </div>
 
               <div className="flex gap-3 mt-6">
-                <button type="submit" className="btn-primary flex-1">
+                <GradientButton type="submit" variant="primary" className="flex-1">
                   {editingType ? 'Update Type' : 'Create Type'}
-                </button>
-                <button
+                </GradientButton>
+                <GradientButton
                   type="button"
+                  variant="secondary"
                   onClick={() => { setShowModal(false); resetForm(); }}
-                  className="btn-secondary flex-1"
+                  className="flex-1"
                 >
                   Cancel
-                </button>
+                </GradientButton>
               </div>
             </form>
-          </div>
+          </GlassCard>
         </div>
       )}
     </div>

@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
-import { TableCellsIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
+import GlassCard from '../../components/common/GlassCard';
+import GradientButton from '../../components/common/GradientButton';
+import { TableCellsIcon, ArrowPathIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 
 const Tables = () => {
   const [tables, setTables] = useState([]);
@@ -12,9 +14,7 @@ const Tables = () => {
   const [limit] = useState(50);
   const [searchTerm, setSearchTerm] = useState('');
 
-  useEffect(() => {
-    fetchTables();
-  }, []);
+  useEffect(() => { fetchTables(); }, []);
 
   const fetchTables = async () => {
     try {
@@ -23,9 +23,7 @@ const Tables = () => {
       setTables(res.data.data);
     } catch (error) {
       toast.error('Failed to fetch tables');
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   const fetchTableData = async (tableName) => {
@@ -36,9 +34,7 @@ const Tables = () => {
       setTableData(res.data);
     } catch (error) {
       toast.error('Failed to fetch table data');
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   const handleTableClick = (tableName) => {
@@ -48,9 +44,7 @@ const Tables = () => {
 
   const handlePageChange = (newPage) => {
     setPage(newPage);
-    if (selectedTable) {
-      fetchTableData(selectedTable);
-    }
+    if (selectedTable) fetchTableData(selectedTable);
   };
 
   const filteredTables = tables.filter(t =>
@@ -64,14 +58,21 @@ const Tables = () => {
     return String(value);
   };
 
+  if (loading && !tables.length) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary-500 border-t-transparent" />
+      </div>
+    );
+  }
+
   return (
-    <div className="flex h-[calc(100vh-8rem)] gap-6">
+    <div className="flex h-[calc(100vh-8rem)] gap-6 animate-fadeIn">
       {/* Sidebar */}
-      <div className="w-64 flex-shrink-0 card p-4 overflow-y-auto">
+      <div className="w-64 flex-shrink-0 GlassCard p-4 overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-bold text-lg text-slate-800 dark:text-slate-100">
-            <TableCellsIcon className="w-5 h-5 inline mr-2" />
-            Tables
+            <TableCellsIcon className="w-5 h-5 inline mr-2" /> Tables
           </h2>
           <button
             onClick={fetchTables}
@@ -82,56 +83,63 @@ const Tables = () => {
           </button>
         </div>
 
-        <input
-          type="text"
-          placeholder="Search tables..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="input-field text-sm mb-3"
-        />
+        <div className="flex items-center gap-2 mb-3">
+          <MagnifyingGlassIcon className="w-4 h-4 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Search tables..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="input-field text-sm flex-1"
+          />
+        </div>
 
         {loading && !tables.length ? (
           <div className="text-center py-8 text-slate-500">Loading...</div>
         ) : (
           <ul className="space-y-1">
-            {filteredTables.map((tbl) => (
-              <li key={tbl.name}>
-                <button
-                  onClick={() => handleTableClick(tbl.name)}
-                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex justify-between items-center ${
-                    selectedTable === tbl.name
-                      ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400'
-                      : 'hover:bg-slate-100 dark:hover:bg-slate-700/50 text-slate-700 dark:text-slate-300'
-                  }`}
-                >
-                  <span>{tbl.name}</span>
-                  <span className="text-xs text-slate-400">({tbl.rows})</span>
-                </button>
-              </li>
-            ))}
+            {filteredTables.length === 0 ? (
+              <li className="text-center py-4 text-slate-500 text-sm">No tables found</li>
+            ) : (
+              filteredTables.map((tbl) => (
+                <li key={tbl.name}>
+                  <button
+                    onClick={() => handleTableClick(tbl.name)}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex justify-between items-center ${
+                      selectedTable === tbl.name
+                        ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400'
+                        : 'hover:bg-slate-100 dark:hover:bg-slate-700/50 text-slate-700 dark:text-slate-300'
+                    }`}
+                  >
+                    <span>{tbl.name}</span>
+                    <span className="text-xs text-slate-400">({tbl.rows})</span>
+                  </button>
+                </li>
+              ))
+            )}
           </ul>
         )}
       </div>
 
       {/* Data Grid */}
-      <div className="flex-1 card p-4 overflow-auto">
+      <div className="flex-1 GlassCard p-4 overflow-auto">
         {selectedTable && tableData ? (
           <>
             <div className="flex justify-between items-center mb-4 sticky top-0 bg-white dark:bg-slate-800 z-10 pb-2 border-b border-slate-200 dark:border-slate-700">
               <div>
-                <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100">
-                  {selectedTable}
-                </h3>
+                <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100">{selectedTable}</h3>
                 <p className="text-sm text-slate-500 dark:text-slate-400">
                   {tableData.pagination.total} rows • Page {tableData.pagination.page} of {tableData.pagination.pages}
                 </p>
               </div>
-              <button
+              <GradientButton
+                variant="secondary"
+                size="sm"
+                icon={ArrowPathIcon}
                 onClick={() => fetchTableData(selectedTable)}
-                className="btn-secondary text-sm flex items-center gap-1"
               >
-                <ArrowPathIcon className="w-4 h-4" /> Refresh
-              </button>
+                Refresh
+              </GradientButton>
             </div>
 
             <div className="overflow-x-auto">
@@ -178,7 +186,7 @@ const Tables = () => {
                   <button
                     onClick={() => handlePageChange(tableData.pagination.page - 1)}
                     disabled={tableData.pagination.page === 1}
-                    className="px-3 py-1 border border-slate-300 dark:border-slate-600 rounded hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                    className="px-3 py-1 border border-slate-300 dark:border-slate-600 rounded hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 text-sm"
                   >
                     Previous
                   </button>
@@ -188,7 +196,7 @@ const Tables = () => {
                   <button
                     onClick={() => handlePageChange(tableData.pagination.page + 1)}
                     disabled={tableData.pagination.page === tableData.pagination.pages}
-                    className="px-3 py-1 border border-slate-300 dark:border-slate-600 rounded hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                    className="px-3 py-1 border border-slate-300 dark:border-slate-600 rounded hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 text-sm"
                   >
                     Next
                   </button>
@@ -199,8 +207,8 @@ const Tables = () => {
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-slate-500 dark:text-slate-400">
             <TableCellsIcon className="w-16 h-16 mb-4 opacity-30" />
-            <p className="text-lg font-medium">Select a table to view data</p>
-            <p className="text-sm">Choose a table from the sidebar to browse its contents</p>
+            <p className="text-lg font-medium">Select a table</p>
+            <p className="text-sm">Choose from the sidebar to browse its contents</p>
           </div>
         )}
       </div>

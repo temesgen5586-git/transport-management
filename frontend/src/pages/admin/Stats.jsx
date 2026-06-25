@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { getStats } from '../../api/admin';
 import StatsCard from '../../components/cards/StatsCard';
+import GlassCard from '../../components/common/GlassCard';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title } from 'chart.js';
 import { Pie, Bar } from 'react-chartjs-2';
 
@@ -22,7 +23,7 @@ const Stats = () => {
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary-500 border-t-transparent"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary-500 border-t-transparent" />
       </div>
     );
   }
@@ -52,10 +53,13 @@ const Stats = () => {
   };
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-6">System Statistics</h1>
+    <div className="space-y-6 animate-fadeIn">
+      <div>
+        <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">System Statistics</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Key metrics and analytics</p>
+      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatsCard title="Scheduled Trips" value={stats?.scheduled_trips || 0} color="blue" />
         <StatsCard title="Active Trips" value={stats?.active_trips || 0} color="green" />
         <StatsCard title="Total Drivers" value={stats?.total_drivers || 0} color="purple" />
@@ -63,13 +67,13 @@ const Stats = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="card p-6">
+        <GlassCard className="p-6">
           <h3 className="font-semibold text-slate-800 dark:text-slate-100 mb-4">Trip Distribution</h3>
           <div className="flex justify-center">
             <Pie data={pieData} options={{ responsive: true, plugins: { legend: { position: 'bottom' } } }} />
           </div>
-        </div>
-        <div className="card p-6">
+        </GlassCard>
+        <GlassCard className="p-6">
           <h3 className="font-semibold text-slate-800 dark:text-slate-100 mb-4">Revenue Trend</h3>
           <Bar
             data={revenueData}
@@ -79,22 +83,22 @@ const Stats = () => {
               scales: { y: { beginAtZero: true } }
             }}
           />
-        </div>
+        </GlassCard>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-        <div className="card p-6 text-center">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <GlassCard className="p-6 text-center">
           <p className="text-sm text-slate-500 dark:text-slate-400">Vehicles Needing Service</p>
           <p className="text-3xl font-bold text-red-600 dark:text-red-400">{stats?.vehicles_needing_service || 0}</p>
-        </div>
-        <div className="card p-6 text-center">
-          <p className="text-sm text-slate-500 dark:text-slate-400">Total Passengers Served</p>
+        </GlassCard>
+        <GlassCard className="p-6 text-center">
+          <p className="text-sm text-slate-500 dark:text-slate-400">Passengers Served</p>
           <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">{(stats?.total_revenue || 0) / 50}</p>
-        </div>
-        <div className="card p-6 text-center">
+        </GlassCard>
+        <GlassCard className="p-6 text-center">
           <p className="text-sm text-slate-500 dark:text-slate-400">System Uptime</p>
           <p className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">99.9%</p>
-        </div>
+        </GlassCard>
       </div>
     </div>
   );
